@@ -22,6 +22,7 @@ export async function GET(request) {
         await Address.length
         await Product.length
 
+        const orders = await Order.find({}).populate('address items.product')
 
         return NextResponse.json({ success: true, orders })
 
