@@ -22,7 +22,15 @@ export async function GET(request) {
         await Address.length
         await Product.length
 
-        const orders = await Order.find({}).populate('address items.product')
+    const orders = await Order.find({})
+        .populate('address')   // buyer details
+        .populate({
+        path: 'items.product',  // product inside items
+        populate: {
+        path: 'seller',       // fetch seller linked to product
+        select: 'name'        // only bring seller name
+    }
+    })
 
         return NextResponse.json({ success: true, orders })
 
