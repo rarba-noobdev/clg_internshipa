@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useAppContext } from "@/context/AppContext";
 import Image from "next/image";
 import { useClerk, UserButton } from "@clerk/nextjs";
+import ClickableSearchIcon from "./ClickableSearchIcon"; // <-- 1. IMPORT THE NEW COMPONENT
 
 const Navbar = () => {
 
@@ -12,8 +13,7 @@ const Navbar = () => {
   const { openSignIn } = useClerk()
 
   return (
-<nav className="flex items-center justify-between px-6 md:px-16 lg:px-32 py-3 border-b-8 border-green-700 text-gray-700">
-
+    <nav className="flex items-center justify-between px-6 md:px-16 lg:px-32 py-3 border-b-8 border-green-700 text-gray-700">
       <Image
         className="cursor-pointer w-28 md:w-32"
         onClick={() => router.push('/')}
@@ -24,7 +24,7 @@ const Navbar = () => {
         <Link href="/" className="hover:text-gray-900 transition">
           Home
         </Link>
-        <Link href="/all-products" className="hover:text-gray-900 transition">
+        <Link href="/categories" className="hover:text-gray-900 transition">
           Shop
         </Link>
         <Link href="/about-us" className="hover:text-gray-900 transition">
@@ -35,11 +35,10 @@ const Navbar = () => {
         </Link>
 
         {isSeller && <button onClick={() => router.push('/seller')} className="text-xs border px-4 py-1.5 rounded-full">Seller Dashboard</button>}
-
       </div>
 
       <ul className="hidden md:flex items-center gap-4 ">
-        <Image className="w-4 h-4" src={assets.search_icon} alt="search icon" />
+        <ClickableSearchIcon /> {/* <-- 2. REPLACE THE OLD LINK WITH THE NEW COMPONENT */}
         {
           user
             ? <>
@@ -59,13 +58,14 @@ const Navbar = () => {
         }
       </ul>
 
-      <div className="flex items-center md:hidden gap-3">
+      <div className="flex items-center md:hidden gap-4"> {/* <-- Note: increased gap from 3 to 4 */}
+        <ClickableSearchIcon /> {/* <-- 3. ADD THE COMPONENT TO THE MOBILE VIEW */}
         {isSeller && <button onClick={() => router.push('/seller')} className="text-xs border px-4 py-1.5 rounded-full">Seller Dashboard</button>}
         {
           user
             ? <>
               <UserButton>
-              <UserButton.MenuItems>
+                <UserButton.MenuItems>
                   <UserButton.Action label="Home" labelIcon={<HomeIcon />} onClick={() => router.push('/')} />
                 </UserButton.MenuItems>
                 <UserButton.MenuItems>
