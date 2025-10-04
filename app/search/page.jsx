@@ -5,20 +5,19 @@ import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 
 const SearchPage = async ({ searchParams }) => {
-  const params = await searchParams; 
-  const query = params.q || "";
+  const query = searchParams?.q || "";   // ✅ removed await
 
   await dbConnect();
 
   const products = await Product.find({
     $or: [
-      { name: { $regex: query, $options: 'i' } },
-      { description: { $regex: query, $options: 'i' } },
-      { category: { $regex: query, $options: 'i' } },
+      { name: { $regex: query, $options: "i" } },
+      { description: { $regex: query, $options: "i" } },
+      { category: { $regex: query, $options: "i" } },
     ],
   }).lean();
 
-  const plainProducts = products.map(product => ({
+  const plainProducts = products.map((product) => ({
     ...product,
     _id: product._id.toString(),
   }));
@@ -30,7 +29,8 @@ const SearchPage = async ({ searchParams }) => {
         <div className="pt-12">
           {query ? (
             <h1 className="text-2xl font-medium">
-              Search results for: <span className="font-bold text-green-600">"{query}"</span>
+              Search results for:{" "}
+              <span className="font-bold text-green-600">"{query}"</span>
             </h1>
           ) : (
             <h1 className="text-2xl font-medium">Search for products</h1>
@@ -47,9 +47,13 @@ const SearchPage = async ({ searchParams }) => {
         ) : (
           <div className="w-full text-center py-20">
             {query ? (
-                <p className="text-lg text-gray-500">No products found matching your search.</p>
+              <p className="text-lg text-gray-500">
+                No products found matching your search.
+              </p>
             ) : (
-                <p className="text-lg text-gray-500">Please enter a search term to find products.</p>
+              <p className="text-lg text-gray-500">
+                Please enter a search term to find products.
+              </p>
             )}
           </div>
         )}
