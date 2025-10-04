@@ -1,46 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { assets } from '@/assets/assets'; // Adjust path to your assets file if needed
+import { assets } from '@/assets/assets';
 
 const ClickableSearchIcon = () => {
   const [showInput, setShowInput] = useState(false);
   const [query, setQuery] = useState('');
   const router = useRouter();
+  const searchRef = useRef(null);
 
-  // This function runs when the user submits the search form
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
       router.push(`/search?q=${query}`);
-      setShowInput(false); // Hide the input box after searching
+      setShowInput(false);
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowInput(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="relative">
-      {/* 1. The Search Icon Button */}
-      {/* When you click this, it sets `showInput` to true */}
-      <button onClick={() => setShowInput(true)} aria-label="Open search">
+    <div className="relative" ref={searchRef}>
+      <button onClick={() => setShowInput(!showInput)} aria-label="Toggle search">
         <Image className="w-5 h-5 cursor-pointer" src={assets.search_icon} alt="search icon" />
       </button>
 
-      {/* 2. The Input Box Form */}
-      {/* This form only appears if `showInput` is true */}
       {showInput && (
+        // --- THIS LINE IS THE ONLY CHANGE ---
         <form 
           onSubmit={handleSearch} 
-          className="absolute top-full right-0 mt-2 p-2 bg-white border border-gray-300 rounded-md shadow-lg z-10"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 bg-white border rounded-md shadow-lg z-10 w-screen max-w-xs"
         >
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search..."
-            className="px-2 py-1 border rounded-md focus:outline-none"
-            autoFocus // This makes the cursor appear automatically
+            className="w-full px-2 py-1 border-gray-300 rounded focus:outline-none"
+            autoFocus
           />
         </form>
       )}
