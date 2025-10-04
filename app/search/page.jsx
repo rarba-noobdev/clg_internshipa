@@ -5,13 +5,17 @@ import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 
 const SearchPage = async ({ searchParams }) => {
-  const query = searchParams.q || "";
+  const params = await searchParams; 
+  const query = params.q || "";
 
   await dbConnect();
 
-  // This query now ONLY searches the 'name' field
   const products = await Product.find({
-    name: { $regex: query, $options: 'i' }
+    $or: [
+      { name: { $regex: query, $options: 'i' } },
+      { description: { $regex: query, $options: 'i' } },
+      { category: { $regex: query, $options: 'i' } },
+    ],
   }).lean();
 
   const plainProducts = products.map(product => ({
