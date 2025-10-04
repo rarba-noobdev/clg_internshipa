@@ -38,7 +38,6 @@ const ClickableSearchIcon = () => {
       </button>
 
       {showInput && (
-        // --- THIS LINE IS THE ONLY CHANGE ---
         <form 
           onSubmit={handleSearch} 
           className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 bg-white border rounded-md shadow-lg z-10 w-screen max-w-xs"
