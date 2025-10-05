@@ -5,9 +5,11 @@ import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 
 const SearchPage = async ({ searchParams }) => {
-  const query = searchParams?.q || "";   // ✅ removed await
+  const params = await searchParams;   //
+  const query = params.q || "";
 
   await dbConnect();
+
 
   const products = await Product.find({
     $or: [
