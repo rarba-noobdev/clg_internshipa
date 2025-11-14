@@ -7,9 +7,6 @@ import OrderSummary from "@/components/OrderSummary";
 import { useAppContext } from "@/context/AppContext";
 import { Trash2 } from "lucide-react";
 
-// 🔥 COMPLETE CART REDESIGN — Modern, Clean, E-commerce Standard
-// Apple-level alignment + Amazon-level usability + Flipkart-level clarity
-
 const Cart = () => {
   const {
     products,
@@ -20,8 +17,15 @@ const Cart = () => {
     getCartCount,
   } = useAppContext();
 
+  // Build cart array safely
   const cartList = Object.keys(cartItems)
-    .map((id) => ({ product: products.find((p) => p._id === id), qty: cartItems[id] }))
+    .map((id) => {
+      const product = products.find((p) => p._id === id);
+      return {
+        product,
+        qty: cartItems[id],
+      };
+    })
     .filter((item) => item.product && item.qty > 0);
 
   return (
@@ -89,7 +93,9 @@ const Cart = () => {
                     {/* Quantity Selector */}
                     <div className="flex items-center gap-2 bg-white rounded-full shadow border px-3 py-1">
                       <button
-                        onClick={() => updateCartQuantity(product._id, qty - 1)}
+                        onClick={() =>
+                          updateCartQuantity(product._id, qty - 1)
+                        }
                         className="text-lg font-bold text-gray-700"
                       >
                         −
@@ -97,7 +103,9 @@ const Cart = () => {
                       <input
                         type="number"
                         value={qty}
-                        onChange={(e) => updateCartQuantity(product._id, Number(e.target.value))}
+                        onChange={(e) =>
+                          updateCartQuantity(product._id, Number(e.target.value))
+                        }
                         className="w-10 text-center text-gray-800 focus:outline-none"
                       />
                       <button
