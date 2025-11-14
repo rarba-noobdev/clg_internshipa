@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 const OrderSummary = () => {
 
-  const { currency, router, getCartCount, getCartAmount, getToken, user, cartItems, setCartItems } = useAppContext()
+  const { currency, router, getCartCount, getCartAmount, getToken, user, cartItems, setCartItems, products, productsLoaded } = useAppContext()
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [userAddresses, setUserAddresses] = useState([]);
@@ -50,12 +50,23 @@ const OrderSummary = () => {
     try {
       setIsLoading(true);
 
+      console.log('=== FRONTEND ORDER REQUEST ===');
+      console.log('Products loaded:', productsLoaded);
+      console.log('Products count:', products.length);
+      console.log('Cart items:', cartItems);
+
       // Check if user is logged in
       if (!user) {
         toast('Please login to place order', {
           icon: '⚠️',
         })
-        router.push('/login'); // Redirect to login
+        router.push('/login');
+        return;
+      }
+
+      // Check if products are loaded
+      if (!productsLoaded || products.length === 0) {
+        toast.error('Products are still loading, please wait...');
         return;
       }
       
@@ -65,12 +76,27 @@ const OrderSummary = () => {
         return;
       }
 
-      // Build cart items array
-      let cartItemsArray = Object.keys(cartItems).map((key) => ({
-        product: key, 
-        quantity: cartItems[key]
-      }))
-      cartItemsArray = cartItemsArray.filter(item => item.quantity > 0)
+      // Build cart items array - ensure product IDs are strings
+      let cartItemsArray = Object.keys(cartItems)
+        .map((key) => ({
+          product: key.toString(), // Ensure string format
+          quantity: cartItems[key]
+        }))
+        .filter(item => item.quantity > 0);
+
+      console.log('Cart items array:', cartItemsArray);
+
+      // Validate each product exists
+      const missingProducts = cartItemsArray.filter(item => {
+        const product = products.find(p => p._id === item.product);
+        return !product;
+      });
+
+      if (missingProducts.length > 0) {
+        console.error('Missing products:', missingProducts);
+        toast.error('Some products in your cart no longer exist. Please refresh the page.');
+        return;
+      }
 
       // Check if cart is empty
       if (cartItemsArray.length === 0) {
@@ -87,7 +113,7 @@ const OrderSummary = () => {
         return;
       }
 
-      console.log('Placing order with:', {
+      console.log('Sending order request:', {
         address: selectedAddress._id,
         items: cartItemsArray,
         itemCount: cartItemsArray.length
@@ -104,7 +130,7 @@ const OrderSummary = () => {
         }
       })
 
-      console.log('Order response:', data);
+      console.log('Order API response:', data);
 
       if (data.success) {
         toast.success(data.message || 'Order placed successfully!')
@@ -115,12 +141,15 @@ const OrderSummary = () => {
       }
 
     } catch (error) {
-      console.error('Order creation error:', error);
+      console.error('❌ Order creation error:', error);
+      console.error('Error response:', error.response?.data);
       
       // More detailed error handling
       if (error.response) {
         // Server responded with error
-        toast.error(error.response.data?.message || `Server error: ${error.response.status}`)
+        const errorMsg = error.response.data?.message || `Server error: ${error.response.status}`;
+        toast.error(errorMsg)
+        console.error('Server error details:', error.response.data);
       } else if (error.request) {
         // Request made but no response
         toast.error('No response from server. Please check your connection.')
@@ -232,10 +261,12 @@ const OrderSummary = () => {
 
       <button 
         onClick={createOrder} 
-        disabled={isLoading || !user || !selectedAddress || getCartCount() === 0}
+        disabled={isLoading || !user || !selectedAddress || getCartCount() === 0 || !productsLoaded}
         className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
       >
-        {isLoading ? 'Placing Order...' : 'Place Order'}
+        {isLoading ? 'Placing Order...' : 
+         !productsLoaded ? 'Loading Products...' :
+         'Place Order'}
       </button>
     </div>
   );
