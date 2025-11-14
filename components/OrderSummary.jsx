@@ -5,27 +5,36 @@ import toast from "react-hot-toast";
 
 const OrderSummary = () => {
 
-  const { currency, router, getCartCount, getCartAmount, getToken, user , cartItems, setCartItems } = useAppContext()
+  const { currency, router, getCartCount, getCartAmount, getToken, user, cartItems, setCartItems } = useAppContext()
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
   const [userAddresses, setUserAddresses] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchUserAddresses = async () => {
     try {
-      
       const token = await getToken()
-      const {data} = await axios.get('/api/user/get-address',{headers:{Authorization:`Bearer ${token}`}})
+      
+      if (!token) {
+        console.log('No token available');
+        return;
+      }
+
+      const { data } = await axios.get('/api/user/get-address', { 
+        headers: { Authorization: `Bearer ${token}` } 
+      })
+      
       if (data.success) {
         setUserAddresses(data.addresses)
         if (data.addresses.length > 0) {
           setSelectedAddress(data.addresses[0])
         }
       } else {
-        toast.error(data.message)
+        toast.error(data.message || 'Failed to fetch addresses')
       }
     } catch (error) {
-      toast.error(error.message)
+      console.error('Error fetching addresses:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to fetch addresses')
     }
   }
 
@@ -35,44 +44,92 @@ const OrderSummary = () => {
   };
 
   const createOrder = async () => {
-    try {
+    // Prevent double submission
+    if (isLoading) return;
 
+    try {
+      setIsLoading(true);
+
+      // Check if user is logged in
       if (!user) {
-        return toast('Please login to place order',{
+        toast('Please login to place order', {
           icon: '⚠️',
         })
-    }
+        router.push('/login'); // Redirect to login
+        return;
+      }
       
+      // Check if address is selected
       if (!selectedAddress) {
-        return toast.error('Please select an address')
+        toast.error('Please select a delivery address')
+        return;
       }
 
-      let cartItemsArray = Object.keys(cartItems).map((key) => ({product:key, quantity:cartItems[key]}))
+      // Build cart items array
+      let cartItemsArray = Object.keys(cartItems).map((key) => ({
+        product: key, 
+        quantity: cartItems[key]
+      }))
       cartItemsArray = cartItemsArray.filter(item => item.quantity > 0)
 
+      // Check if cart is empty
       if (cartItemsArray.length === 0) {
-        return toast.error('Cart is empty')
+        toast.error('Your cart is empty')
+        return;
       }
 
+      // Get authentication token
       const token = await getToken()
+      
+      if (!token) {
+        toast.error('Authentication failed. Please login again.')
+        router.push('/login');
+        return;
+      }
 
-      const { data } = await axios.post('/api/order/create',{
+      console.log('Placing order with:', {
+        address: selectedAddress._id,
+        items: cartItemsArray,
+        itemCount: cartItemsArray.length
+      });
+
+      // Make API call
+      const { data } = await axios.post('/api/order/create', {
         address: selectedAddress._id,
         items: cartItemsArray
-      },{
-        headers: {Authorization:`Bearer ${token}`}
+      }, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       })
 
+      console.log('Order response:', data);
+
       if (data.success) {
-        toast.success(data.message)
-        setCartItems({})
+        toast.success(data.message || 'Order placed successfully!')
+        setCartItems({}) // Clear cart
         router.push('/order-placed')
       } else {
-        toast.error(data.message)
+        toast.error(data.message || 'Failed to place order')
       }
 
     } catch (error) {
-      toast.error(error.message)
+      console.error('Order creation error:', error);
+      
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with error
+        toast.error(error.response.data?.message || `Server error: ${error.response.status}`)
+      } else if (error.request) {
+        // Request made but no response
+        toast.error('No response from server. Please check your connection.')
+      } else {
+        // Something else happened
+        toast.error(error.message || 'Failed to place order')
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -95,11 +152,14 @@ const OrderSummary = () => {
           </label>
           <div className="relative inline-block w-full text-sm border">
             <button
-              className="peer w-full text-left px-4 pr-2 py-2 bg-white text-gray-700 focus:outline-none"
+              className="peer w-full text-left px-4 pr-2 py-2 bg-white text-gray-700 focus:outline-none disabled:opacity-50"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              disabled={!user || userAddresses.length === 0}
             >
               <span>
-                {selectedAddress
+                {!user ? "Please login to select address" :
+                 userAddresses.length === 0 ? "No addresses found. Add one!" :
+                 selectedAddress
                   ? `${selectedAddress.fullName}, ${selectedAddress.area}, ${selectedAddress.city}, ${selectedAddress.state}`
                   : "Select Address"}
               </span>
@@ -110,11 +170,11 @@ const OrderSummary = () => {
               </svg>
             </button>
 
-            {isDropdownOpen && (
+            {isDropdownOpen && user && (
               <ul className="absolute w-full bg-white border shadow-md mt-1 z-10 py-1.5">
                 {userAddresses.map((address, index) => (
                   <li
-                    key={index}
+                    key={address._id || index}
                     className="px-4 py-2 hover:bg-gray-500/10 cursor-pointer"
                     onClick={() => handleAddressSelect(address)}
                   >
@@ -123,7 +183,7 @@ const OrderSummary = () => {
                 ))}
                 <li
                   onClick={() => router.push("/add-address")}
-                  className="px-4 py-2 hover:bg-gray-500/10 cursor-pointer text-center"
+                  className="px-4 py-2 hover:bg-gray-500/10 cursor-pointer text-center border-t mt-1"
                 >
                   + Add New Address
                 </li>
@@ -170,8 +230,12 @@ const OrderSummary = () => {
         </div>
       </div>
 
-      <button onClick={createOrder} className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700">
-        Place Order
+      <button 
+        onClick={createOrder} 
+        disabled={isLoading || !user || !selectedAddress || getCartCount() === 0}
+        className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+      >
+        {isLoading ? 'Placing Order...' : 'Place Order'}
       </button>
     </div>
   );
