@@ -1,114 +1,165 @@
-'use client'
-import { assets } from "@/assets/assets";
+"use client";
+
+import React, { useState } from "react";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import Image from "next/image";
-import { useState } from "react";
+import { assets } from "@/assets/assets";
 import { useAppContext } from "@/context/AppContext";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { MapPin, User, Phone, Mail, Home, Landmark } from "lucide-react";
+
+// 🔥 COMPLETE PREMIUM REDESIGN — Modern, Clean, Minimal
+// Apple-like layout + Amazon checkout flow
 
 const AddAddress = () => {
+  const { getToken, router } = useAppContext();
 
-    const { getToken, router } = useAppContext()
+  const [address, setAddress] = useState({
+    fullName: "",
+    phoneNumber: "",
+    pincode: "",
+    area: "",
+    city: "",
+    state: "",
+  });
 
-    const [address, setAddress] = useState({
-        fullName: '',
-        phoneNumber: '',
-        pincode: '',
-        area: '',
-        city: '',
-        state: '',
-    })
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(
+        "/api/user/add-address",
+        { address },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    const onSubmitHandler = async (e) => {
-        e.preventDefault();
-        try {
-
-            const token = await getToken()
-
-            const { data } = await axios.post('/api/user/add-address', { address }, { headers: { Authorization: `Bearer ${token}` } })
-
-            if (data.success) {
-                toast.success(data.message)
-                router.push('/cart')
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
-        }
+      if (data.success) {
+        toast.success(data.message);
+        router.push("/cart");
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error(err.message);
     }
+  };
 
-    return (
-        <>
-            <Navbar />
-            <div className="px-6 md:px-16 lg:px-32 py-16 flex flex-col md:flex-row justify-between">
-                <form onSubmit={onSubmitHandler} className="w-full">
-                    <p className="text-2xl md:text-3xl text-gray-500">
-                        Add Shipping <span className="font-semibold text-orange-600">Address</span>
-                    </p>
-                    <div className="space-y-3 max-w-sm mt-10">
-                        <input
-                            className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
-                            type="text"
-                            placeholder="Full name"
-                            onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
-                            value={address.fullName}
-                        />
-                        <input
-                            className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
-                            type="text"
-                            placeholder="Phone number"
-                            onChange={(e) => setAddress({ ...address, phoneNumber: e.target.value })}
-                            value={address.phoneNumber}
-                        />
-                        <input
-                            className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
-                            type="text"
-                            placeholder="Pin code"
-                            onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                            value={address.pincode}
-                        />
-                        <textarea
-                            className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500 resize-none"
-                            type="text"
-                            rows={4}
-                            placeholder="Address (Area and Street)"
-                            onChange={(e) => setAddress({ ...address, area: e.target.value })}
-                            value={address.area}
-                        ></textarea>
-                        <div className="flex space-x-3">
-                            <input
-                                className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
-                                type="text"
-                                placeholder="City/District/Town"
-                                onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                                value={address.city}
-                            />
-                            <input
-                                className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
-                                type="text"
-                                placeholder="State"
-                                onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                                value={address.state}
-                            />
-                        </div>
-                    </div>
-                    <button type="submit" className="max-w-sm w-full mt-6 bg-orange-600 text-white py-3 hover:bg-orange-700 uppercase">
-                        Save address
-                    </button>
-                </form>
-                <Image
-                    className="md:mr-16 mt-16 md:mt-0"
-                    src={assets.my_location_image}
-                    alt="my_location_image"
+  return (
+    <>
+      <Navbar />
+
+      <main className="px-6 md:px-20 lg:px-40 py-14 min-h-screen bg-gray-50">
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-gray-900 mb-10">
+          Add <span className="text-green-600">Shipping Address</span>
+        </h1>
+
+        <div className="flex flex-col lg:flex-row gap-12 items-start">
+          {/* FORM */}
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white shadow-lg border border-gray-100 rounded-2xl p-8 w-full max-w-xl"
+          >
+            <div className="space-y-4">
+              {/* Full Name */}
+              <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-xl border">
+                <User className="w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={address.fullName}
+                  onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
+                  className="w-full bg-transparent focus:outline-none text-gray-800"
                 />
+              </div>
+
+              {/* Phone */}
+              <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-xl border">
+                <Phone className="w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  value={address.phoneNumber}
+                  onChange={(e) => setAddress({ ...address, phoneNumber: e.target.value })}
+                  className="w-full bg-transparent focus:outline-none text-gray-800"
+                />
+              </div>
+
+              {/* Pincode */}
+              <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-xl border">
+                <Mail className="w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Pincode"
+                  value={address.pincode}
+                  onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+                  className="w-full bg-transparent focus:outline-none text-gray-800"
+                />
+              </div>
+
+              {/* Area */}
+              <div className="flex items-start gap-3 bg-gray-100 px-4 py-3 rounded-xl border">
+                <Home className="w-5 h-5 text-gray-500 mt-1" />
+                <textarea
+                  placeholder="Address (Area and Street)"
+                  rows="3"
+                  value={address.area}
+                  onChange={(e) => setAddress({ ...address, area: e.target.value })}
+                  className="w-full bg-transparent focus:outline-none text-gray-800 resize-none"
+                ></textarea>
+              </div>
+
+              {/* City + State */}
+              <div className="flex gap-3">
+                <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-xl border w-full">
+                  <Landmark className="w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={address.city}
+                    onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                    className="w-full bg-transparent focus:outline-none text-gray-800"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-xl border w-full">
+                  <MapPin className="w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={address.state}
+                    onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                    className="w-full bg-transparent focus:outline-none text-gray-800"
+                  />
+                </div>
+              </div>
             </div>
-            <Footer />
-        </>
-    );
+
+            {/* Save Button */}
+            <button
+              type="submit"
+              className="mt-8 w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+            >
+              Save Address
+            </button>
+          </form>
+
+          {/* ILLUSTRATION */}
+          <div className="hidden lg:block">
+            <Image
+              src={assets.my_location_image}
+              alt="Location Illustration"
+              className="w-[420px]"
+            />
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </>
+  );
 };
 
 export default AddAddress;
