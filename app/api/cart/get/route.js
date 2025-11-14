@@ -12,9 +12,13 @@ export async function GET(request) {
         await connectDB()
         const user = await User.findById(userId)
 
-        const { cartItems } = user
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'User not found' })
+        }
 
-        return NextResponse.json({ success: true, cartItems})
+        const { cartItems } = user || { cartItems: {} }
+
+        return NextResponse.json({ success: true, cartItems })
 
     } catch (error) {
         return NextResponse.json({ success: false, message: error.message });

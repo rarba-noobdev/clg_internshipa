@@ -14,7 +14,11 @@ export async function POST(request) {
         await connectDB()
         const user = await User.findById(userId)
 
-        user.cartItems = cartData
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'User not found' })
+        }
+
+        user.cartItems = cartData || {}
         await user.save()
 
         return NextResponse.json({ success: true });
