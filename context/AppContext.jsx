@@ -13,7 +13,7 @@ export const useAppContext = () => {
 
 export const AppContextProvider = (props) => {
 
-    const currency = process.env.NEXT_PUBLIC_CURRENCY
+    const currency = process.env.NEXT_PUBLIC_CURRENCY || '₹'
     const router = useRouter()
 
     const { user } = useUser()
@@ -26,7 +26,6 @@ export const AppContextProvider = (props) => {
 
     const fetchProductData = async () => {
         try {
-            
             const {data} = await axios.get('/api/product/list')
 
             if (data.success) {
@@ -36,29 +35,32 @@ export const AppContextProvider = (props) => {
             }
 
         } catch (error) {
+            console.error('Error fetching products:', error);
             toast.error(error.message)
         }
     }
 
     const fetchUserData = async () => {
         try {
-
-            if (user.publicMetadata.role === 'seller') {
+            if (user?.publicMetadata?.role === 'seller') {
                 setIsSeller(true)
             }
 
             const token = await getToken()
 
-            const { data } = await axios.get('/api/user/data', { headers: { Authorization: `Bearer ${token}` } })
+            const { data } = await axios.get('/api/user/data', { 
+                headers: { Authorization: `Bearer ${token}` } 
+            })
 
             if (data.success) {
                 setUserData(data.user)
-                setCartItems(data.user.cartItems)
+                setCartItems(data.user.cartItems || {})
             } else {
                 toast.error(data.message)
             }
 
         } catch (error) {
+            console.error('Error fetching user data:', error);
             toast.error(error.message)
         }
     }
@@ -68,7 +70,7 @@ export const AppContextProvider = (props) => {
         if (!user) {
             return toast('Please login',{
                 icon: '⚠️',
-              })
+            })
         }
 
         let cartData = structuredClone(cartItems);
@@ -79,12 +81,16 @@ export const AppContextProvider = (props) => {
             cartData[itemId] = 1;
         }
         setCartItems(cartData);
+        
         if (user) {
             try {
                 const token = await getToken()
-                await axios.post('/api/cart/update', {cartData}, {headers:{Authorization: `Bearer ${token}`}} )
+                await axios.post('/api/cart/update', {cartData}, {
+                    headers:{Authorization: `Bearer ${token}`}
+                })
                 toast.success('Item added to cart')
             } catch (error) {
+                console.error('Error updating cart:', error);
                 toast.error(error.message)
             }
         }
@@ -99,12 +105,16 @@ export const AppContextProvider = (props) => {
             cartData[itemId] = quantity;
         }
         setCartItems(cartData)
+        
         if (user) {
             try {
                 const token = await getToken()
-                await axios.post('/api/cart/update', {cartData}, {headers:{Authorization: `Bearer ${token}`}} )
+                await axios.post('/api/cart/update', {cartData}, {
+                    headers:{Authorization: `Bearer ${token}`}
+                })
                 toast.success('Cart Updated')
             } catch (error) {
+                console.error('Error updating cart quantity:', error);
                 toast.error(error.message)
             }
         }
@@ -120,14 +130,26 @@ export const AppContextProvider = (props) => {
         return totalCount;
     }
 
+    // FIXED: Safely handle missing products
     const getCartAmount = () => {
         let totalAmount = 0;
+        
         for (const items in cartItems) {
-            let itemInfo = products.find((product) => product._id === items);
+            // Only calculate if quantity is positive
             if (cartItems[items] > 0) {
-                totalAmount += itemInfo.offerPrice * cartItems[items];
+                // Find the product
+                let itemInfo = products.find((product) => product._id === items);
+                
+                // CRITICAL FIX: Check if product exists and has offerPrice
+                if (itemInfo && itemInfo.offerPrice !== undefined) {
+                    totalAmount += itemInfo.offerPrice * cartItems[items];
+                } else {
+                    // Log warning for debugging - product might have been deleted
+                    console.warn(`Product with ID ${items} not found or missing offerPrice`);
+                }
             }
         }
+        
         return Math.floor(totalAmount * 100) / 100;
     }
 
