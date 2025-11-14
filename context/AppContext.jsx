@@ -2,7 +2,7 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import toast from "react-hot-toast";
 
 export const AppContext = createContext();
@@ -24,22 +24,25 @@ export const AppContextProvider = (props) => {
     const [isSeller, setIsSeller] = useState(false)
     const [cartItems, setCartItems] = useState({})
     const [productsLoaded, setProductsLoaded] = useState(false)
+    const hasNormalizedRef = useRef(false) // Prevent multiple normalizations
 
     const fetchProductData = async () => {
         try {
-            console.log('Fetching products...');
+            console.log('📦 Fetching products...');
             const {data} = await axios.get('/api/product/list')
 
             if (data.success) {
                 console.log(`✅ Loaded ${data.products.length} products`);
+                console.log('Product IDs:', data.products.map(p => p._id));
                 setProducts(data.products)
                 setProductsLoaded(true)
             } else {
+                console.error('Failed to load products:', data.message);
                 toast.error(data.message)
             }
 
         } catch (error) {
-            console.error('Error fetching products:', error);
+            console.error('❌ Error fetching products:', error);
             toast.error(error.message)
         }
     }
@@ -57,9 +60,8 @@ export const AppContextProvider = (props) => {
             })
 
             if (data.success) {
-                console.log('User data loaded:', {
-                    cartItemsCount: Object.keys(data.user.cartItems || {}).length
-                });
+                console.log('👤 User data loaded');
+                console.log('Cart from server:', data.user.cartItems);
                 setUserData(data.user)
                 setCartItems(data.user.cartItems || {})
             } else {
@@ -67,7 +69,7 @@ export const AppContextProvider = (props) => {
             }
 
         } catch (error) {
-            console.error('Error fetching user data:', error);
+            console.error('❌ Error fetching user data:', error);
             toast.error(error.message)
         }
     }
@@ -137,28 +139,22 @@ export const AppContextProvider = (props) => {
         return totalCount;
     }
 
-    // FIXED: Wait for products to load before calculating
     const getCartAmount = () => {
-        // Return 0 if products not loaded yet
         if (!productsLoaded || products.length === 0) {
-            console.log('Products not loaded yet, returning 0');
             return 0;
         }
 
         let totalAmount = 0;
         
         for (const itemId in cartItems) {
-            // Only calculate if quantity is positive
             if (cartItems[itemId] > 0) {
-                // Find the product
-                let itemInfo = products.find((product) => product._id === itemId);
+                // Convert both to strings for comparison
+                let itemInfo = products.find((product) => String(product._id) === String(itemId));
                 
-                // Check if product exists and has offerPrice
                 if (itemInfo && itemInfo.offerPrice !== undefined) {
                     totalAmount += itemInfo.offerPrice * cartItems[itemId];
                 } else {
-                    console.warn(`⚠️ Product ${itemId} not found in products array`);
-                    console.log('Available product IDs:', products.map(p => p._id));
+                    console.warn(`⚠️ Product ${itemId} not found`);
                 }
             }
         }
@@ -166,69 +162,87 @@ export const AppContextProvider = (props) => {
         return Math.floor(totalAmount * 100) / 100;
     }
 
-    // Clean up cart - remove products that no longer exist
-    const cleanUpCart = async () => {
-        if (!user || products.length === 0 || !productsLoaded) return;
+    // Clean invalid cart items
+    const cleanCart = async () => {
+        if (!productsLoaded || !user || Object.keys(cartItems).length === 0) {
+            return;
+        }
 
-        let hasInvalidItems = false;
-        let cleanedCart = structuredClone(cartItems);
+        console.log('🧹 Cleaning cart...');
+        console.log('Cart items:', Object.keys(cartItems));
+        console.log('Product IDs:', products.map(p => String(p._id)));
 
-        for (const itemId in cleanedCart) {
-            const product = products.find((p) => p._id === itemId);
+        const productIdStrings = products.map(p => String(p._id));
+        const cleanedCart = {};
+        let removedCount = 0;
+
+        for (const itemId in cartItems) {
+            const itemIdStr = String(itemId);
             
-            if (!product) {
-                console.log(`🗑️ Removing invalid product ${itemId} from cart`);
-                delete cleanedCart[itemId];
-                hasInvalidItems = true;
+            if (productIdStrings.includes(itemIdStr)) {
+                cleanedCart[itemIdStr] = cartItems[itemId];
+                console.log(`✓ Kept: ${itemIdStr}`);
+            } else {
+                console.log(`✗ Removed: ${itemId} (not in products)`);
+                removedCount++;
             }
         }
 
-        // Update cart if invalid items were found
-        if (hasInvalidItems) {
+        if (removedCount > 0) {
+            console.log(`Removed ${removedCount} invalid items`);
             setCartItems(cleanedCart);
-            
+
             try {
                 const token = await getToken();
                 await axios.post('/api/cart/update', { cartData: cleanedCart }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                toast.success('Cart cleaned up - removed deleted products');
+                toast.success(`Cart cleaned: removed ${removedCount} invalid items`);
             } catch (error) {
-                console.error('Error cleaning cart:', error);
+                console.error('Failed to save cleaned cart:', error);
             }
+        } else {
+            console.log('✅ Cart is clean');
         }
     }
 
+    // Fetch products on mount
     useEffect(() => {
         fetchProductData()
     }, [])
 
+    // Fetch user data when user logs in
     useEffect(() => {
         if (user) {
             fetchUserData()
         }
     }, [user])
 
-    // Auto-cleanup cart when products are loaded
+    // Validate and clean cart once products and cart are loaded
     useEffect(() => {
-        if (productsLoaded && Object.keys(cartItems).length > 0) {
-            console.log('Checking cart validity...');
-            console.log('Cart items:', Object.keys(cartItems));
-            console.log('Product IDs:', products.map(p => p._id));
+        if (productsLoaded && Object.keys(cartItems).length > 0 && !hasNormalizedRef.current) {
+            hasNormalizedRef.current = true; // Run only once
             
-            // Check if all cart items exist in products
-            const invalidItems = Object.keys(cartItems).filter(itemId => 
-                !products.find(p => p._id === itemId)
-            );
+            console.log('=== CART VALIDATION ===');
+            const productIdStrings = products.map(p => String(p._id));
+            const cartIdStrings = Object.keys(cartItems).map(id => String(id));
             
-            if (invalidItems.length > 0) {
-                console.warn('Invalid items in cart:', invalidItems);
-                cleanUpCart();
+            console.log('Cart IDs:', cartIdStrings);
+            console.log('Product IDs:', productIdStrings);
+            
+            // Check for mismatches
+            const invalid = cartIdStrings.filter(id => !productIdStrings.includes(id));
+            
+            if (invalid.length > 0) {
+                console.log('⚠️ Invalid items found:', invalid);
+                cleanCart();
             } else {
                 console.log('✅ All cart items are valid');
             }
+            
+            console.log('=== END VALIDATION ===\n');
         }
-    }, [productsLoaded, products])
+    }, [productsLoaded, cartItems])
 
     const value = {
         user, getToken,
@@ -240,7 +254,7 @@ export const AppContextProvider = (props) => {
         cartItems, setCartItems,
         addToCart, updateCartQuantity,
         getCartCount, getCartAmount,
-        cleanUpCart
+        cleanCart
     }
 
     return (
