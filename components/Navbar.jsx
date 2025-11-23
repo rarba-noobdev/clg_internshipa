@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, Search, ShoppingCart, Package, Home, Box, User } from "lucide-react";
+import { Menu, Search, ShoppingCart, Package, Home, Box, User, ShoppingBag } from "lucide-react";
 
 const Navbar = () => {
   const { isSeller, router, user } = useAppContext();
@@ -35,6 +35,7 @@ const Navbar = () => {
 
   const navLinks = [
     { href: "/", label: "Home" },
+    { href: "/all-products", label: "All Products" },
     { href: "/categories", label: "Shop" },
     { href: "/about-us", label: "About Us" },
     { href: "/contact-us", label: "Contact" },
@@ -47,7 +48,7 @@ const Navbar = () => {
 
   const mobileUserMenu = [
     { label: "Home", icon: <Home className="w-5 h-5" />, path: "/" },
-    { label: "Products", icon: <Box className="w-5 h-5" />, path: "/all-products" },
+    { label: "All Products", icon: <ShoppingBag className="w-5 h-5" />, path: "/all-products" },
     ...userMenuItems,
   ];
 
@@ -59,7 +60,7 @@ const Navbar = () => {
           className="flex cursor-pointer items-center transition-transform hover:scale-105"
           onClick={() => router.push("/")}
         >
-          levǝl
+          <span className="text-xl font-bold">levǝl</span>
         </div>
 
         {/* Desktop Navigation */}

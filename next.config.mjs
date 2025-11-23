@@ -26,7 +26,22 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'media-amazon.com',
                 pathname: '/images/**',
-            }
+            },
+            {
+                protocol: 'https',
+                hostname: 'in.static.webuy.com',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'img.clerk.com',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'images.clerk.dev',
+                pathname: '**',
+            },
         ],
     },
 };
